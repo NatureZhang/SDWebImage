@@ -16,11 +16,11 @@
 
 @interface SDWebImageDownloader () <NSURLSessionTaskDelegate, NSURLSessionDataDelegate>
 
-@property (strong, nonatomic, nonnull) NSOperationQueue *downloadQueue;
-@property (weak, nonatomic, nullable) NSOperation *lastAddedOperation;
+@property (strong, nonatomic, nonnull) NSOperationQueue *downloadQueue; //用于下载的队列
+@property (weak, nonatomic, nullable) NSOperation *lastAddedOperation;  //最后一个下载操作
 @property (assign, nonatomic, nullable) Class operationClass;
-@property (strong, nonatomic, nonnull) NSMutableDictionary<NSURL *, SDWebImageDownloaderOperation *> *URLOperations;
-@property (strong, nonatomic, nullable) SDHTTPHeadersMutableDictionary *HTTPHeaders;
+@property (strong, nonatomic, nonnull) NSMutableDictionary<NSURL *, SDWebImageDownloaderOperation *> *URLOperations; //下载操作的集合
+@property (strong, nonatomic, nullable) SDHTTPHeadersMutableDictionary *HTTPHeaders;//http header头
 // This queue is used to serialize the handling of the network responses of all the download operation in a single queue
 @property (SDDispatchQueueSetterSementics, nonatomic, nullable) dispatch_queue_t barrierQueue;
 
@@ -149,7 +149,7 @@
         __strong __typeof (wself) sself = wself;
         NSTimeInterval timeoutInterval = sself.downloadTimeout;
         if (timeoutInterval == 0.0) {
-            timeoutInterval = 15.0;
+            timeoutInterval = 15.0; //超时时间15s
         }
 
         // In order to prevent from potential duplicate caching (NSURLCache + SDImageCache) we disable the cache for image requests if told otherwise

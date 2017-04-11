@@ -15,6 +15,11 @@
 #import "NSImage+WebCache.h"
 
 // See https://github.com/rs/SDWebImage/pull/1141 for discussion
+/*
+ 关于NSCache 可以参看：http://nshipster.cn/nscache/
+ 关于NSCache的问题还有这里：http://stackoverflow.com/questions/19546054/nscache-crashing-when-memory-limit-is-reached-only-on-ios-7/19549090#19549090
+ AutoPurgeCache 在收到内存警告时会删除所有的对象
+ */
 @interface AutoPurgeCache : NSCache
 @end
 
@@ -38,7 +43,7 @@
 
 @end
 
-
+// 用来计算cache的cost
 FOUNDATION_STATIC_INLINE NSUInteger SDCacheCostForImage(UIImage *image) {
 #if SD_MAC
     return image.size.height * image.size.width;
@@ -50,10 +55,10 @@ FOUNDATION_STATIC_INLINE NSUInteger SDCacheCostForImage(UIImage *image) {
 @interface SDImageCache ()
 
 #pragma mark - Properties
-@property (strong, nonatomic, nonnull) NSCache *memCache;
-@property (strong, nonatomic, nonnull) NSString *diskCachePath;
-@property (strong, nonatomic, nullable) NSMutableArray<NSString *> *customPaths;
-@property (SDDispatchQueueSetterSementics, nonatomic, nullable) dispatch_queue_t ioQueue;
+@property (strong, nonatomic, nonnull) NSCache *memCache; // 内存缓存
+@property (strong, nonatomic, nonnull) NSString *diskCachePath; // 磁盘缓存路径
+@property (strong, nonatomic, nullable) NSMutableArray<NSString *> *customPaths; //
+@property (SDDispatchQueueSetterSementics, nonatomic, nullable) dispatch_queue_t ioQueue; //读写磁盘串行队列
 
 @end
 
@@ -135,6 +140,7 @@ FOUNDATION_STATIC_INLINE NSUInteger SDCacheCostForImage(UIImage *image) {
     SDDispatchQueueRelease(_ioQueue);
 }
 
+// 判断当前队列是否为 ioQueue 
 - (void)checkIfQueueIsIOQueue {
     const char *currentQueueLabel = dispatch_queue_get_label(DISPATCH_CURRENT_QUEUE_LABEL);
     const char *ioQueueLabel = dispatch_queue_get_label(self.ioQueue);
@@ -164,6 +170,7 @@ FOUNDATION_STATIC_INLINE NSUInteger SDCacheCostForImage(UIImage *image) {
     return [self cachePathForKey:key inPath:self.diskCachePath];
 }
 
+// 缓存在本地磁盘的路径进行 MD5编码
 - (nullable NSString *)cachedFileNameForKey:(nullable NSString *)key {
     const char *str = key.UTF8String;
     if (str == NULL) {
@@ -215,6 +222,7 @@ FOUNDATION_STATIC_INLINE NSUInteger SDCacheCostForImage(UIImage *image) {
         [self.memCache setObject:image forKey:key cost:cost];
     }
     
+    // 缓存到磁盘
     if (toDisk) {
         dispatch_async(self.ioQueue, ^{
             NSData *data = imageData;
@@ -369,10 +377,14 @@ FOUNDATION_STATIC_INLINE NSUInteger SDCacheCostForImage(UIImage *image) {
     }
 
     // First check the in-memory cache...
+    // 检查内存缓存
     UIImage *image = [self imageFromMemoryCacheForKey:key];
+    
+    // 如果存在，调用doneBlock 将image，data，cachetype 回传
     if (image) {
         NSData *diskData = nil;
         if ([image isGIF]) {
+            // 如果是gif，拿到data 在doneBlock中回传
             diskData = [self diskImageDataBySearchingAllPathsForKey:key];
         }
         if (doneBlock) {
@@ -381,6 +393,7 @@ FOUNDATION_STATIC_INLINE NSUInteger SDCacheCostForImage(UIImage *image) {
         return nil;
     }
 
+    // 查看磁盘缓存 队列 ioQueue
     NSOperation *operation = [NSOperation new];
     dispatch_async(self.ioQueue, ^{
         if (operation.isCancelled) {
@@ -391,7 +404,9 @@ FOUNDATION_STATIC_INLINE NSUInteger SDCacheCostForImage(UIImage *image) {
         @autoreleasepool {
             NSData *diskData = [self diskImageDataBySearchingAllPathsForKey:key];
             UIImage *diskImage = [self diskImageForKey:key];
+            // 如果需要缓存到内存，则缓存到内存
             if (diskImage && self.config.shouldCacheImagesInMemory) {
+                // cost 被用来计算缓存中所有对象的代价。当内存受限或者所有缓存对象的总代价超过了最大允许的值时，缓存会移除其中的一些对象。
                 NSUInteger cost = SDCacheCostForImage(diskImage);
                 [self.memCache setObject:diskImage forKey:key cost:cost];
             }
@@ -404,6 +419,7 @@ FOUNDATION_STATIC_INLINE NSUInteger SDCacheCostForImage(UIImage *image) {
         }
     });
 
+    // 返回NSOperation
     return operation;
 }
 

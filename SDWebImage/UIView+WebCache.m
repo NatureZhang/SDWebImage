@@ -46,14 +46,21 @@ static char TAG_ACTIVITY_SHOW;
     
     if (url) {
         // check if activityView is enabled or not
+        // 进行动画加载
         if ([self sd_showActivityIndicatorView]) {
             [self sd_addActivityIndicator];
         }
         
+        /*
+        调用 SDWebImageManager 单例类，获取图片 
+         
+         
+         */
+        
         __weak __typeof(self)wself = self;
         id <SDWebImageOperation> operation = [SDWebImageManager.sharedManager loadImageWithURL:url options:options progress:progressBlock completed:^(UIImage *image, NSData *data, NSError *error, SDImageCacheType cacheType, BOOL finished, NSURL *imageURL) {
             __strong __typeof (wself) sself = wself;
-            [sself sd_removeActivityIndicator];
+            [sself sd_removeActivityIndicator]; //停掉动画
             if (!sself) {
                 return;
             }
@@ -62,9 +69,9 @@ static char TAG_ACTIVITY_SHOW;
                     return;
                 }
                 if (image && (options & SDWebImageAvoidAutoSetImage) && completedBlock) {
-                    completedBlock(image, error, cacheType, url);
+                    completedBlock(image, error, cacheType, url); //回调completedBlock
                     return;
-                } else if (image) {
+                } else if (image) { //设置图片 刷新
                     [sself sd_setImage:image imageData:data basedOnClassOrViaCustomSetImageBlock:setImageBlock];
                     [sself sd_setNeedsLayout];
                 } else {
@@ -78,6 +85,8 @@ static char TAG_ACTIVITY_SHOW;
                 }
             });
         }];
+        
+        // 以validOperationKey为键值，将operation 保存到 operationDictionary 中
         [self sd_setImageLoadOperation:operation forKey:validOperationKey];
     } else {
         dispatch_main_async_safe(^{

@@ -82,6 +82,7 @@ typedef SDHTTPHeadersDictionary * _Nullable (^SDWebImageDownloaderHeadersFilterB
 
 /**
  *  A token associated with each download. Can be used to cancel a download
+ *  与每一个下载相关联，可以用来关闭一个下载
  */
 @interface SDWebImageDownloadToken : NSObject
 
@@ -93,6 +94,7 @@ typedef SDHTTPHeadersDictionary * _Nullable (^SDWebImageDownloaderHeadersFilterB
 
 /**
  * Asynchronous downloader dedicated and optimized for image loading.
+ *
  */
 @interface SDWebImageDownloader : NSObject
 
